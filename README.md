@@ -11,3 +11,5 @@ Adds new camera widget to left panel above the ads widget.
 ## Setup
 
 Install [Tampermonkey](https://github.com/Tampermonkey/tampermonkey) or equivalent userscript manager as a browser extension
+
+Either copy/paste `main.js` or use remote source `https://raw.githubusercontent.com/barrettotte/fishtank-userscript/refs/heads/master/main.js`
