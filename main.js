@@ -2,7 +2,7 @@
 // @name         fishtank-userscript
 // @description  UserScript to tweak/add features to fishtank.live
 // @namespace    http://tampermonkey.net/
-// @version      4.0.0
+// @version      4.0.1
 // @author       barrettotte
 // @match        *://*.fishtank.live/*
 // @run-at       document-idle
@@ -10,6 +10,9 @@
 // ==/UserScript==
 
 const leftPanelSelector = "div[class^='layout_left__']";
+const rightPanelSelector = "div[class^='layout_right__']";
+const statusBarSelector = "div[class^='status-bar_status-bar__']";
+
 const missionWidgetSelector = "div[class^='missions_missions__']";
 const adWidgetSelector = "div[class^='ads_ads__']";
 const closeBtnSelectors = [
@@ -60,7 +63,7 @@ const cameraList = {
   function pressCloseButton() {
     for (const selector of closeBtnSelectors) {
       const closeBtn = document.querySelector(selector);
-      if (closeBtn !== null) {
+      if (closeBtn) {
         closeBtn.click();
         break; // found one, we should be at main screen now
       }
@@ -99,7 +102,7 @@ const cameraList = {
 
   // handle collapsing/uncollapsing widget when clicking on widget header
   function collapseCameraListWidget(header) {
-    if (header !== null) {
+    if (header) {
       const container = header.parentElement;
       const body = header.nextElementSibling;
       const icon = header.children[0].children[0];
@@ -120,6 +123,17 @@ const cameraList = {
   // add quick select camera widget above the ads widget
   function addCameraListWidget() {
     const leftPanel = document.querySelector(leftPanelSelector);
+    if (!leftPanel) {
+      console.error('Failed to add camera list widget. Missing left panel reference.');
+      return;
+    }
+
+    // where we'll insert the widget above
+    const adsWidget = leftPanel.querySelector(adWidgetSelector)
+    if (!adsWidget) {
+      console.error('Failed to add camera list widget. Missing ads widget reference.');
+      return;
+    }
 
     // use mission as the reference to get existing widget styling
     const missionWidget = leftPanel.querySelector(missionWidgetSelector);
@@ -194,14 +208,121 @@ const cameraList = {
     container.appendChild(body);
 
     // add cams widget above ads widget
-    if (leftPanel !== null) {
-      leftPanel.insertBefore(cameraWidget, leftPanel.querySelector(adWidgetSelector));
-    }
+    leftPanel.insertBefore(cameraWidget, adsWidget);
 
     console.log('Added camera list widget');
   }
 
+  function addChatToggle() {
+    const statusBar = document.querySelector(statusBarSelector);
+    if (!statusBar) {
+      console.error('Failed to add chat toggle. Missing status bar reference.');
+      return;
+    }
+
+    const statusBarLeft = statusBar.children[0];
+    if (!statusBarLeft) {
+      console.error('Failed to add chat toggle. Missing status bar left reference.');
+      return;
+    }
+
+    // use existing TTS status button as reference
+    const ttsButton = statusBarLeft.children[0];
+    if (!ttsButton) {
+      console.error('Failed to add chat toggle. Missing TTS status reference.');
+      return;
+    }
+    
+    // root button
+    const chatToggle = document.createElement('button');
+    for (const c of ttsButton.classList) {
+      // skip enabled/disabled styling, we'll do that ourselves
+      if (!c.startsWith('status-bar_enabled__')) {
+        chatToggle.classList.add(c);
+      }
+    }
+
+    // add toggle for chat
+    chatToggle.addEventListener('click', (event) => {
+      const btn = event.currentTarget;
+      if (!btn) {
+        console.error('Cannot toggle chat. No event target found.');
+        return;
+      }
+
+      const rightPanel = document.querySelector(rightPanelSelector);
+      if (!rightPanel) {
+        console.error('Cannot toggle chat. Failed to find right panel reference.');
+        return;
+      }
+
+      if (btn.children.length !== 2) {
+        console.error('Missing chat toggle children. Expected 2 children.');
+        return;
+      }
+
+      const status = btn.children[1];
+      if (rightPanel.style.display === 'none') {
+        rightPanel.style.display = 'flex';
+        status.textContent = 'On';
+        status.style.color = 'white';
+      } else {
+        rightPanel.style.display = 'none';
+        status.textContent = 'Off';
+        status.style.color = '#aaa';
+      }
+    });
+
+    // button.label
+    const chatLabel = document.createElement('div');
+    chatLabel.textContent = 'CHAT';
+    chatLabel.style.color = 'white';
+    chatLabel.style.letterSpacing = '-1.5px';
+    chatLabel.style.textTransform = 'uppercase';
+    chatLabel.style.fontWeight = '500';
+    chatToggle.appendChild(chatLabel);
+
+    // button.status
+    const chatStatus = document.createElement('div');
+    chatStatus.id = 'custom-chat-status';
+    chatStatus.textContent = 'On';
+    chatStatus.style.color = 'white';
+    chatStatus.style.whiteSpace = 'nowrap';
+    chatStatus.style.textTransform = 'uppercase';
+    chatStatus.style.fontSize = '14px';
+    chatStatus.style.letterSpacing = '-1px';
+    chatToggle.appendChild(chatStatus);
+
+    // button.status styling
+    const chatStatusStyle = document.createElement('style');
+    chatStatusStyle.textContent = `
+      #custom-chat-status::before {
+        color: #f8ec94;
+        content: "[";
+        margin-right: 4px;
+      }
+      #custom-chat-status::after {
+        color: #f8ec94;
+        content: "]";
+        margin-left: 4px;
+      }
+    `;
+    document.head.appendChild(chatStatusStyle);
+
+    // add chat toggle to right of TOYS button
+    statusBarLeft.appendChild(chatToggle);
+
+    console.log('Added chat toggle');
+  }
+
+  // =================================================================================
+
   // wait for mission widget since we copy some classes from it
   waitForElement(missionWidgetSelector).then(() => addCameraListWidget());
+
+  // add chat toggle
+  waitForElement(rightPanelSelector).then(() => {
+    waitForElement(statusBarSelector).then(() => addChatToggle());
+  });
 
 })();
