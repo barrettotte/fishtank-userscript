@@ -2,12 +2,18 @@
 // @name         fishtank-userscript
 // @description  UserScript to tweak/add features to fishtank.live
 // @namespace    http://tampermonkey.net/
-// @version      4.0.1
+// @version      4.0.2
 // @author       barrettotte
 // @match        *://*.fishtank.live/*
 // @run-at       document-idle
 // @grant        none
 // ==/UserScript==
+
+const offYellowColor = '#f8ec94';
+const midGrayColor = '#aaa';
+const darkGrayColor = '#505050';
+
+const camListWidgetId = 'cams_cams__custom';
 
 const leftPanelSelector = "div[class^='layout_left__']";
 const rightPanelSelector = "div[class^='layout_right__']";
@@ -15,6 +21,8 @@ const statusBarSelector = "div[class^='status-bar_status-bar__']";
 
 const missionWidgetSelector = "div[class^='missions_missions__']";
 const adWidgetSelector = "div[class^='ads_ads__']";
+const livestreamNameSelector = "[class^='live-stream-player_name__']";
+
 const closeBtnSelectors = [
   "button[class^='live-stream-player_close__']",  // active stream
   "button[class^='close-button_close-button__']", // about, contestants, clans, leaderboard, 
@@ -26,19 +34,19 @@ const closeBtnSelectors = [
 
 // room name: camera ID
 const cameraList = {
-  'BEDROOM 1': '#camera-1-4',
-  'BEDROOM 2': '#camera-2-4',
-  'BEDROOM 3': '#camera-3-4',
-  'BEDROOM 4': '#camera-4-4',
-  'HALLWAY UPSTAIRS': '#camera-5-4',
-  'HALLWAY DOWNSTAIRS': '#camera-6-4',
-  'LIVING ROOM': '#camera-7-4',
-  'LIVING ROOM PTZ': '#camera-8-4',
-  'KITCHEN': '#camera-9-4',
-  'LAUNDRY ROOM': '#camera-10-4',
-  'GARAGE': '#camera-11-4',
-  'CONFESSIONAL': '#camera-12-4',
-  'DIRECTOR': '#camera-13-4',
+  'BEDROOM 1': 'camera-1-4',
+  'BEDROOM 2': 'camera-2-4',
+  'BEDROOM 3': 'camera-3-4',
+  'BEDROOM 4': 'camera-4-4',
+  'HALLWAY UPSTAIRS': 'camera-5-4',
+  'HALLWAY DOWNSTAIRS': 'camera-6-4',
+  'LIVING ROOM': 'camera-7-4',
+  'LIVING ROOM PTZ': 'camera-8-4',
+  'KITCHEN': 'camera-9-4',
+  'LAUNDRY ROOM': 'camera-10-4',
+  'GARAGE': 'camera-11-4',
+  'CONFESSIONAL': 'camera-12-4',
+  'DIRECTOR': 'camera-13-4',
 };
 
 (() => {
@@ -61,12 +69,17 @@ const cameraList = {
 
   // if close button available, trigger close event
   function pressCloseButton() {
-    for (const selector of closeBtnSelectors) {
-      const closeBtn = document.querySelector(selector);
-      if (closeBtn) {
-        closeBtn.click();
-        break; // found one, we should be at main screen now
-      }
+    const closeBtn = closeBtnSelectors.map(selector => document.querySelector(selector)).find(btn => btn);
+    if (closeBtn) {
+      closeBtn.click();
+    }
+  }
+
+    // set text color for active camera in camera list widget
+  function highlightActiveCameraInWidget(room) {
+    const camListButtons = document.querySelectorAll(`#${camListWidgetId} > div > div:nth-child(2) > btn`);
+    for (const btn of camListButtons) {
+      btn.style.color = (btn.textContent === room) ? offYellowColor : midGrayColor;
     }
   }
 
@@ -75,7 +88,7 @@ const cameraList = {
     const camBtn = document.createElement('btn');
     camBtn.textContent = room;
 
-    camBtn.style.border = '1px solid #505050';
+    camBtn.style.border = `1px solid ${darkGrayColor}`;
     camBtn.style.fontSize = '12px';
     camBtn.style.paddingTop = '5px';
     camBtn.style.paddingBottom = '5px';
@@ -84,17 +97,21 @@ const cameraList = {
 
     camBtn.onclick = () => {
       pressCloseButton();
-      setTimeout(() => waitForElement(camId).then((camEl) => camEl.click()), 125);
+      setTimeout(() => {
+        waitForElement(`#${camId}`).then((camEl) => {
+          camEl.click();
+        })
+      }, 125);
     };
     camBtn.onmouseover = () => {
       camBtn.style.backgroundColor = '#2b2d2e';
       camBtn.style.cursor = 'pointer';
-      camBtn.style.border = '1px solid #FFFFFF';
+      camBtn.style.border = '1px solid white';
     };
     camBtn.onmouseout = () => {
       camBtn.style.backgroundColor = '#191D21';
       camBtn.style.cursor = 'default';
-      camBtn.style.border = '1px solid #505050';
+      camBtn.style.border = `1px solid ${darkGrayColor}`;
     };
 
     return camBtn;
@@ -113,7 +130,7 @@ const cameraList = {
         body.style.display = 'none';
         icon.style.transform = 'scaleY(1)';
       } else {
-        container.style.border = '1px solid #505050';
+        container.style.border = `1px solid ${darkGrayColor}`;
         body.style.display = 'flex';
         icon.style.transform = 'scaleY(-1)';
       }
@@ -144,16 +161,12 @@ const cameraList = {
 
     // root widget
     const cameraWidget = document.createElement('div');
-    cameraWidget.id = 'cams_cams__custom';
+    cameraWidget.id = camListWidgetId;
 
     // widget.container
     const container = document.createElement('div');
-    for (const c of missionWidget.children[0]?.classList) {
-      // copy classes from mission container, except collapse styling
-      if (!c.startsWith('panel_collapsed')) {
-        container.classList.add(c);
-      }
-    }
+    const sourceClasses = missionWidget.children[0]?.classList ?? [];
+    container.classList.add(...Array.from(sourceClasses).filter(c => !c.startsWith('panel_collapsed'))); // skip collapse styling
     cameraWidget.appendChild(container);
     
     // widget.container.header
@@ -163,12 +176,11 @@ const cameraList = {
     container.appendChild(header);
 
     // widget.container.header.collapse
-    const svgColor = '#f8ec94';
     const headerCollapse = document.createElement('div');
     headerCollapse.style.display = 'flex';
     headerCollapse.style.marginLeft = '-4px';
     headerCollapse.style.marginRight = '4px';
-    headerCollapse.style.color = svgColor;
+    headerCollapse.style.color = offYellowColor;
     headerCollapse.style.filter = 'drop-shadow(2px 3px 0 #000000)';
     header.appendChild(headerCollapse);
 
@@ -177,18 +189,18 @@ const cameraList = {
     headerCollapseIcon.style.display = 'inline-flex';
     headerCollapseIcon.style.alignItems = 'center';
     headerCollapseIcon.style.justifyContent = 'center';
-    headerCollapseIcon.style.color = svgColor;
+    headerCollapseIcon.style.color = offYellowColor;
     headerCollapseIcon.style.transform = 'scaleY(-1)'; // start uncollapsed
     headerCollapseIcon.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M19 8H5V10H7V12H9V14H11V16H13V14H15V12H17V10H19V8Z" fill="${svgColor}"></path>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M19 8H5V10H7V12H9V14H11V16H13V14H15V12H17V10H19V8Z" fill="${offYellowColor}"></path>
       </svg>
     `;
     headerCollapse.appendChild(headerCollapseIcon);
 
     // widget.container.header.title
     const headerTitle = document.createElement('div');
-    headerTitle.style.color = '#fff';
+    headerTitle.style.color = 'white';
     headerTitle.style.fontWeight = '600';
     headerTitle.textContent = 'Cameras';
     header.appendChild(headerTitle);
@@ -235,12 +247,7 @@ const cameraList = {
     
     // root button
     const chatToggle = document.createElement('button');
-    for (const c of ttsButton.classList) {
-      // skip enabled/disabled styling, we'll do that ourselves
-      if (!c.startsWith('status-bar_enabled__')) {
-        chatToggle.classList.add(c);
-      }
-    }
+    chatToggle.classList.add(...Array.from(ttsButton.classList).filter(c => !c.startsWith('status-bar_enabled__'))); // skip enabled/disabled style
 
     // add toggle for chat
     chatToggle.addEventListener('click', (event) => {
@@ -249,15 +256,14 @@ const cameraList = {
         console.error('Cannot toggle chat. No event target found.');
         return;
       }
+      if (btn.children.length !== 2) {
+        console.error('Missing chat toggle children. Expected 2 children.');
+        return;
+      }
 
       const rightPanel = document.querySelector(rightPanelSelector);
       if (!rightPanel) {
         console.error('Cannot toggle chat. Failed to find right panel reference.');
-        return;
-      }
-
-      if (btn.children.length !== 2) {
-        console.error('Missing chat toggle children. Expected 2 children.');
         return;
       }
 
@@ -269,7 +275,7 @@ const cameraList = {
       } else {
         rightPanel.style.display = 'none';
         status.textContent = 'Off';
-        status.style.color = '#aaa';
+        status.style.color = midGrayColor;
       }
     });
 
@@ -297,12 +303,12 @@ const cameraList = {
     const chatStatusStyle = document.createElement('style');
     chatStatusStyle.textContent = `
       #custom-chat-status::before {
-        color: #f8ec94;
+        color: ${offYellowColor};
         content: "[";
         margin-right: 4px;
       }
       #custom-chat-status::after {
-        color: #f8ec94;
+        color: ${offYellowColor};
         content: "]";
         margin-left: 4px;
       }
@@ -323,6 +329,44 @@ const cameraList = {
   // add chat toggle
   waitForElement(rightPanelSelector).then(() => {
     waitForElement(statusBarSelector).then(() => addChatToggle());
+  });
+
+  // observe when live stream name is added or changed
+  const liveStreamObserverCb = (mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === 1) {
+            // update cam list when clicking into a camera grid
+            node.querySelectorAll(livestreamNameSelector).forEach(descendant => {
+              highlightActiveCameraInWidget(descendant.textContent.trim().toUpperCase());
+            });
+          }
+        });
+        mutation.removedNodes.forEach(node => {
+          // update cam list when exiting out (close button or escape key)
+          if (node.nodeType === 1) {
+            node.querySelectorAll?.(livestreamNameSelector).forEach(descendant => {
+              highlightActiveCameraInWidget(null);
+            });
+          }
+        });
+      } else if (mutation.type === 'characterData') {
+        // update cam list when switching cams (camListWidget, arrow buttons, arrow keys, clickable areas on stream)
+        const parent = mutation.target.parentElement;
+        if (parent && Array.from(parent.classList).find(c => c.startsWith('live-stream-player_name__'))) {
+          highlightActiveCameraInWidget(parent.textContent.trim().toUpperCase());
+        }
+      }
+    }
+  };
+
+  const liveStreamObserver = new MutationObserver(liveStreamObserverCb);
+  liveStreamObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    characterDataOldValue: true
   });
 
 })();
