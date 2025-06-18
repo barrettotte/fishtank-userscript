@@ -2,12 +2,14 @@
 // @name         fishtank-userscript
 // @description  UserScript to tweak/add features to fishtank.live
 // @namespace    http://tampermonkey.net/
-// @version      4.0.2
+// @version      4.0.3
 // @author       barrettotte
 // @match        *://*.fishtank.live/*
 // @run-at       document-idle
 // @grant        none
 // ==/UserScript==
+
+const camSwitchTimeoutMs = 250;
 
 const offYellowColor = '#f8ec94';
 const midGrayColor = '#aaa';
@@ -101,7 +103,7 @@ const cameraList = {
         waitForElement(`#${camId}`).then((camEl) => {
           camEl.click();
         })
-      }, 125);
+      }, camSwitchTimeoutMs);
     };
     camBtn.onmouseover = () => {
       camBtn.style.backgroundColor = '#2b2d2e';
