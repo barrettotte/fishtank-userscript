@@ -287,11 +287,12 @@ const stoxToContestant = {
       if (rightPanel.style.display === 'none') {
         rightPanel.style.display = 'flex';
         status.textContent = 'On';
+        status.style.color = 'white';
       } else {
         rightPanel.style.display = 'none';
         status.textContent = 'Off';
+        status.style.color = midGrayColor;
       }
-      status.style.color = 'white';
     });
 
     // button.label
