@@ -21,6 +21,14 @@ This toggles the right panel to `display: none` and allows theater mode without 
 
 ![docs/fishtank-s4-chat-toggle.png](docs/fishtank-s4-chat-toggle.png)
 
+### Contestant Name Hover on STOX
+
+Adds contestant name to STOX hover. I added this because I kept forgetting how to spell some contestant's names. 
+
+If new contestants/STOX are added the `stoxToContestant` struct will need to be updated. I couldn't figure out how to dynamically fetch these.
+
+![docs/fishtank-s4-stox-hover.png](docs/fishtank-s4-stox-hover.png)
+
 ## Setup
 
 Install [Tampermonkey](https://github.com/Tampermonkey/tampermonkey) or equivalent userscript manager as a browser extension

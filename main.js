@@ -2,7 +2,7 @@
 // @name         fishtank-userscript
 // @description  UserScript to tweak/add features to fishtank.live
 // @namespace    http://tampermonkey.net/
-// @version      4.0.3
+// @version      4.0.4
 // @author       barrettotte
 // @match        *://*.fishtank.live/*
 // @run-at       document-idle
@@ -20,6 +20,7 @@ const camListWidgetId = 'cams_cams__custom';
 const leftPanelSelector = "div[class^='layout_left__']";
 const rightPanelSelector = "div[class^='layout_right__']";
 const statusBarSelector = "div[class^='status-bar_status-bar__']";
+const stoxWidgetSelector = "div[class^='stocks-panel_stocks-panel__']";
 
 const missionWidgetSelector = "div[class^='missions_missions__']";
 const adWidgetSelector = "div[class^='ads_ads__']";
@@ -49,6 +50,19 @@ const cameraList = {
   'GARAGE': 'camera-11-4',
   'CONFESSIONAL': 'camera-12-4',
   'DIRECTOR': 'camera-13-4',
+};
+
+// stox: constent name
+const stoxToContestant = {
+  'ANGL': 'Angelina',
+  'ARYE': 'Aryeh',
+  'DANL': 'Daniel',
+  'DRNC': 'Direnç',
+  'ELLI': 'Ellie',
+  'FRDY': 'Freddy',
+  'JIN': 'Jin',
+  'RCHL': 'Rachel',
+  'SETH': 'Seth',
 };
 
 (() => {
@@ -273,12 +287,11 @@ const cameraList = {
       if (rightPanel.style.display === 'none') {
         rightPanel.style.display = 'flex';
         status.textContent = 'On';
-        status.style.color = 'white';
       } else {
         rightPanel.style.display = 'none';
         status.textContent = 'Off';
-        status.style.color = midGrayColor;
       }
+      status.style.color = 'white';
     });
 
     // button.label
@@ -323,6 +336,23 @@ const cameraList = {
     console.log('Added chat toggle');
   }
 
+  function addStoxHover() {
+    const stoxWidget = document.querySelector(stoxWidgetSelector);
+    if (!stoxWidget) {
+      console.error('Failed to add stox hover. Missing stox widget reference.');
+      return;
+    }
+
+    for (const stoxEl of stoxWidget.querySelectorAll('button')) {
+      const stoxName = stoxEl.querySelector('div:nth-child(2)')?.textContent;
+      if (stoxName && stoxName.trim() in stoxToContestant) {
+        stoxEl.title = stoxToContestant[stoxName];
+      }
+    }
+
+    console.log('Added stox hover titles');
+  }
+
   // =================================================================================
 
   // wait for mission widget since we copy some classes from it
@@ -332,6 +362,9 @@ const cameraList = {
   waitForElement(rightPanelSelector).then(() => {
     waitForElement(statusBarSelector).then(() => addChatToggle());
   });
+
+  // add titles to stox buttons to show full contestant name on hover
+  waitForElement(stoxWidgetSelector).then(() => addStoxHover());
 
   // observe when live stream name is added or changed
   const liveStreamObserverCb = (mutations) => {
