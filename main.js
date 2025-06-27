@@ -2,7 +2,7 @@
 // @name         fishtank-userscript
 // @description  UserScript to tweak/add features to fishtank.live
 // @namespace    http://tampermonkey.net/
-// @version      4.0.4
+// @version      4.0.5
 // @author       barrettotte
 // @match        *://*.fishtank.live/*
 // @run-at       document-idle
@@ -20,11 +20,11 @@ const camListWidgetId = 'cams_cams__custom';
 const leftPanelSelector = "div[class^='layout_left__']";
 const rightPanelSelector = "div[class^='layout_right__']";
 const statusBarSelector = "div[class^='status-bar_status-bar__']";
-const stoxWidgetSelector = "div[class^='stocks-panel_stocks-panel__']";
+const livestreamNameSelector = "[class^='live-stream-player_name__']";
 
+const stoxWidgetSelector = "div[class^='stocks-panel_stocks-panel__']";
 const missionWidgetSelector = "div[class^='missions_missions__']";
 const adWidgetSelector = "div[class^='ads_ads__']";
-const livestreamNameSelector = "[class^='live-stream-player_name__']";
 
 const closeBtnSelectors = [
   "button[class^='live-stream-player_close__']",  // active stream
@@ -37,23 +37,32 @@ const closeBtnSelectors = [
 
 // room name: camera ID
 const cameraList = {
-  'BEDROOM 1': 'camera-1-4',
-  'BEDROOM 2': 'camera-2-4',
-  'BEDROOM 3': 'camera-3-4',
-  'BEDROOM 4': 'camera-4-4',
-  'HALLWAY UPSTAIRS': 'camera-5-4',
-  'HALLWAY DOWNSTAIRS': 'camera-6-4',
-  'LIVING ROOM': 'camera-7-4',
-  'LIVING ROOM PTZ': 'camera-8-4',
-  'KITCHEN': 'camera-9-4',
-  'LAUNDRY ROOM': 'camera-10-4',
-  'GARAGE': 'camera-11-4',
-  'CONFESSIONAL': 'camera-12-4',
-  'DIRECTOR': 'camera-13-4',
+  // location 2 (s2 basement)
+  'BUNKER 1': 'camera-1-4',
+  'BUNKER 2': 'camera-2-4',
+  'BUNKER 3': 'camera-3-4',
+  'CRAWLSPACE': 'camera-4-4',
+  'DIRECTOR': 'camera-13-4'
+
+  // location 1 (s1 house)
+  // 'BEDROOM 1': 'camera-1-4',
+  // 'BEDROOM 2': 'camera-2-4',
+  // 'BEDROOM 3': 'camera-3-4',
+  // 'BEDROOM 4': 'camera-4-4',
+  // 'HALLWAY UPSTAIRS': 'camera-5-4',
+  // 'HALLWAY DOWNSTAIRS': 'camera-6-4',
+  // 'LIVING ROOM': 'camera-7-4',
+  // 'LIVING ROOM PTZ': 'camera-8-4',
+  // 'KITCHEN': 'camera-9-4',
+  // 'LAUNDRY ROOM': 'camera-10-4',
+  // 'GARAGE': 'camera-11-4',
+  // 'CONFESSIONAL': 'camera-12-4',
+  // 'DIRECTOR': 'camera-13-4',
 };
 
-// stox: constent name
+// stox: contestant name
 const stoxToContestant = {
+  '????': 'Unknown',
   'ANGL': 'Angelina',
   'ARYE': 'Aryeh',
   'DANL': 'Daniel',
@@ -61,6 +70,8 @@ const stoxToContestant = {
   'ELLI': 'Ellie',
   'FRDY': 'Freddy',
   'JIN': 'Jin',
+  'JRRY': 'Jerry (Seth)',
+  'LTTY': 'Letty',
   'RCHL': 'Rachel',
   'SETH': 'Seth',
 };
