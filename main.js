@@ -2,7 +2,7 @@
 // @name         fishtank-userscript
 // @description  UserScript to tweak/add features to fishtank.live
 // @namespace    http://tampermonkey.net/
-// @version      4.0.5
+// @version      4.0.6
 // @author       barrettotte
 // @match        *://*.fishtank.live/*
 // @run-at       document-idle
@@ -16,6 +16,7 @@ const midGrayColor = '#aaa';
 const darkGrayColor = '#505050';
 
 const camListWidgetId = 'cams_cams__custom';
+const chatToggleId = 'custom_chat_toggle';
 
 const leftPanelSelector = "div[class^='layout_left__']";
 const rightPanelSelector = "div[class^='layout_right__']";
@@ -42,7 +43,9 @@ const cameraList = {
   'BUNKER 2': 'camera-2-4',
   'BUNKER 3': 'camera-3-4',
   'CRAWLSPACE': 'camera-4-4',
-  'DIRECTOR': 'camera-13-4'
+  'CAM 1': 'camera-5-4',
+  'DIRECTOR': 'camera-13-4',
+  'LSDIRECTOR': 'lsdirector-4',
 
   // location 1 (s1 house)
   // 'BEDROOM 1': 'camera-1-4',
@@ -124,6 +127,7 @@ const stoxToContestant = {
 
     camBtn.onclick = () => {
       pressCloseButton();
+
       setTimeout(() => {
         waitForElement(`#${camId}`).then((camEl) => {
           camEl.click();
@@ -165,24 +169,10 @@ const stoxToContestant = {
   }
 
   // add quick select camera widget above the ads widget
-  function addCameraListWidget() {
+  function addCameraListWidget(missionWidget) {
     const leftPanel = document.querySelector(leftPanelSelector);
     if (!leftPanel) {
       console.error('Failed to add camera list widget. Missing left panel reference.');
-      return;
-    }
-
-    // where we'll insert the widget above
-    const adsWidget = leftPanel.querySelector(adWidgetSelector)
-    if (!adsWidget) {
-      console.error('Failed to add camera list widget. Missing ads widget reference.');
-      return;
-    }
-
-    // use mission as the reference to get existing widget styling
-    const missionWidget = leftPanel.querySelector(missionWidgetSelector);
-    if (!missionWidget) {
-      console.error(`Mission widget was not found. Cannot add camera list widget`);
       return;
     }
 
@@ -246,19 +236,19 @@ const stoxToContestant = {
     }
     container.appendChild(body);
 
+    const adsWidget = leftPanel.querySelector(adWidgetSelector)
+    if (!adsWidget) {
+      console.error('Failed to add camera list widget. Missing ads widget reference.');
+      return;
+    }
+
     // add cams widget above ads widget
     leftPanel.insertBefore(cameraWidget, adsWidget);
 
     console.log('Added camera list widget');
   }
 
-  function addChatToggle() {
-    const statusBar = document.querySelector(statusBarSelector);
-    if (!statusBar) {
-      console.error('Failed to add chat toggle. Missing status bar reference.');
-      return;
-    }
-
+  function addChatToggle(statusBar) {
     const statusBarLeft = statusBar.children[0];
     if (!statusBarLeft) {
       console.error('Failed to add chat toggle. Missing status bar left reference.');
@@ -274,6 +264,7 @@ const stoxToContestant = {
     
     // root button
     const chatToggle = document.createElement('button');
+    chatToggle.id = chatToggleId;
     chatToggle.classList.add(...Array.from(ttsButton.classList).filter(c => !c.startsWith('status-bar_enabled__'))); // skip enabled/disabled style
 
     // add toggle for chat
@@ -348,35 +339,37 @@ const stoxToContestant = {
     console.log('Added chat toggle');
   }
 
-  function addStoxHover() {
-    const stoxWidget = document.querySelector(stoxWidgetSelector);
-    if (!stoxWidget) {
-      console.error('Failed to add stox hover. Missing stox widget reference.');
-      return;
-    }
-
+  function addStoxHover(stoxWidget) {
     for (const stoxEl of stoxWidget.querySelectorAll('button')) {
       const stoxName = stoxEl.querySelector('div:nth-child(2)')?.textContent;
       if (stoxName && stoxName.trim() in stoxToContestant) {
         stoxEl.title = stoxToContestant[stoxName];
       }
     }
-
     console.log('Added stox hover titles');
   }
 
   // =================================================================================
 
-  // wait for mission widget since we copy some classes from it
-  waitForElement(missionWidgetSelector).then(() => addCameraListWidget());
+  // add styling to hide our custom elements when screen size too small
+  const customStyling = document.createElement('style');
+  customStyling.textContent = `
+    @media screen and (max-width: 1100px) {
+      #${camListWidgetId}, #${chatToggleId} {
+        display: none !important;
+      }
+    }
+  `;
+  document.head.appendChild(customStyling);
+
+  // add camera list to left panel above ads widget (wait for mission widget since we copy classes from it)
+  waitForElement(missionWidgetSelector).then((missionWidget) => addCameraListWidget(missionWidget));
 
   // add chat toggle
-  waitForElement(rightPanelSelector).then(() => {
-    waitForElement(statusBarSelector).then(() => addChatToggle());
-  });
+  waitForElement(statusBarSelector).then((statusBar) => addChatToggle(statusBar));
 
   // add titles to stox buttons to show full contestant name on hover
-  waitForElement(stoxWidgetSelector).then(() => addStoxHover());
+  waitForElement(stoxWidgetSelector).then((stoxWidget) => addStoxHover(stoxWidget));
 
   // observe when live stream name is added or changed
   const liveStreamObserverCb = (mutations) => {
