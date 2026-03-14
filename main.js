@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         fishtank-userscript
-// @description  UserScript to tweak/add features to fishtank.live
+// @description  UserScript to tweak/add features to fishtank.live (season 5)
 // @namespace    http://tampermonkey.net/
-// @version      4.0.6
+// @version      5.0.0
 // @author       barrettotte
 // @match        *://*.fishtank.live/*
 // @run-at       document-idle
@@ -23,7 +23,6 @@ const rightPanelSelector = "div[class^='layout_right__']";
 const statusBarSelector = "div[class^='status-bar_status-bar__']";
 const livestreamNameSelector = "[class^='live-stream-player_name__']";
 
-const stoxWidgetSelector = "div[class^='stocks-panel_stocks-panel__']";
 const missionWidgetSelector = "div[class^='missions_missions__']";
 const adWidgetSelector = "div[class^='ads_ads__']";
 
@@ -38,45 +37,20 @@ const closeBtnSelectors = [
 
 // room name: camera ID
 const cameraList = {
-  // location 2 (s2 basement)
-  'BUNKER 1': 'camera-1-4',
-  'BUNKER 2': 'camera-2-4',
-  'BUNKER 3': 'camera-3-4',
-  'CRAWLSPACE': 'camera-4-4',
-  'CAM 1': 'camera-5-4',
-  'DIRECTOR': 'camera-13-4',
-  'LSDIRECTOR': 'lsdirector-4',
-
-  // location 1 (s1 house)
-  // 'BEDROOM 1': 'camera-1-4',
-  // 'BEDROOM 2': 'camera-2-4',
-  // 'BEDROOM 3': 'camera-3-4',
-  // 'BEDROOM 4': 'camera-4-4',
-  // 'HALLWAY UPSTAIRS': 'camera-5-4',
-  // 'HALLWAY DOWNSTAIRS': 'camera-6-4',
-  // 'LIVING ROOM': 'camera-7-4',
-  // 'LIVING ROOM PTZ': 'camera-8-4',
-  // 'KITCHEN': 'camera-9-4',
-  // 'LAUNDRY ROOM': 'camera-10-4',
-  // 'GARAGE': 'camera-11-4',
-  // 'CONFESSIONAL': 'camera-12-4',
-  // 'DIRECTOR': 'camera-13-4',
-};
-
-// stox: contestant name
-const stoxToContestant = {
-  '????': 'Unknown',
-  'ANGL': 'Angelina',
-  'ARYE': 'Aryeh',
-  'DANL': 'Daniel',
-  'DRNC': 'Direnç',
-  'ELLI': 'Ellie',
-  'FRDY': 'Freddy',
-  'JIN': 'Jin',
-  'JRRY': 'Jerry (Seth)',
-  'LTTY': 'Letty',
-  'RCHL': 'Rachel',
-  'SETH': 'Seth',
+  'BKNY': 'bkny-5',
+  'BRRR': 'brrr-5',
+  'CFSL': 'cfsl-5',
+  'CODR': 'codr-5',
+  'DMCL': 'dmcl-5',
+  'DMRM': 'dmrm-5',
+  'DNRM': 'dnrm-5',
+  'FOYR': 'foyr-5',
+  'GRSM': 'gsrm-5',
+  'HWDN': 'hwdn-5',
+  'HWUP': 'hwup-5',
+  'JCKZ': 'jckz-5',
+  'KTCH': 'ktch-5',
+  'MRKE': 'mrke-5',
 };
 
 (() => {
@@ -248,7 +222,7 @@ const stoxToContestant = {
     console.log('Added camera list widget');
   }
 
-  function addChatToggle(statusBar) {
+  function addChatToggleClassic(statusBar) {
     const statusBarLeft = statusBar.children[0];
     if (!statusBarLeft) {
       console.error('Failed to add chat toggle. Missing status bar left reference.');
@@ -339,16 +313,6 @@ const stoxToContestant = {
     console.log('Added chat toggle');
   }
 
-  function addStoxHover(stoxWidget) {
-    for (const stoxEl of stoxWidget.querySelectorAll('button')) {
-      const stoxName = stoxEl.querySelector('div:nth-child(2)')?.textContent;
-      if (stoxName && stoxName.trim() in stoxToContestant) {
-        stoxEl.title = stoxToContestant[stoxName];
-      }
-    }
-    console.log('Added stox hover titles');
-  }
-
   // =================================================================================
 
   // add styling to hide our custom elements when screen size too small
@@ -366,10 +330,7 @@ const stoxToContestant = {
   waitForElement(missionWidgetSelector).then((missionWidget) => addCameraListWidget(missionWidget));
 
   // add chat toggle
-  waitForElement(statusBarSelector).then((statusBar) => addChatToggle(statusBar));
-
-  // add titles to stox buttons to show full contestant name on hover
-  waitForElement(stoxWidgetSelector).then((stoxWidget) => addStoxHover(stoxWidget));
+  waitForElement(statusBarSelector).then((statusBar) => addChatToggleClassic(statusBar));
 
   // observe when live stream name is added or changed
   const liveStreamObserverCb = (mutations) => {

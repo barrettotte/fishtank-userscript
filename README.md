@@ -2,9 +2,19 @@
 
 UserScript to tweak/add features to [fishtank.live](https://www.fishtank.live/)
 
-## Features (Season 4)
+Updated to support the new website for season 5.
 
-### Camera List Widget
+## Features
+
+### Season 5
+
+TODO:
+
+### Classic
+
+This userscript also supports classic.fishtank.live since it looks like it was never changed after season 4.
+
+#### Camera List Widget
 
 Adds new camera widget to left panel above the ads widget.
 
@@ -15,7 +25,7 @@ On small screens (< 1100px) this widget will be hidden.
 
 ![docs/fishtank-s4-cams.png](docs/fishtank-s4-cams.png)
 
-### Chat Toggle Button
+#### Chat Toggle Button
 
 Adds chat toggle to the right of the TOYS status.
 
@@ -24,14 +34,6 @@ This toggles the right panel to `display: none` and allows theater mode without 
 On small screens (< 1100px) the chat toggle button will be hidden.
 
 ![docs/fishtank-s4-chat-toggle.png](docs/fishtank-s4-chat-toggle.png)
-
-### Contestant Name Hover on STOX
-
-Adds contestant name to STOX hover. I added this because I kept forgetting how to spell some contestant's names. 
-
-If new contestants/STOX are added the `stoxToContestant` struct will need to be updated. I couldn't figure out how to dynamically fetch these.
-
-![docs/fishtank-s4-stox-hover.png](docs/fishtank-s4-stox-hover.png)
 
 ## Setup
 
