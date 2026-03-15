@@ -4,6 +4,8 @@ UserScript to tweak/add features to [fishtank.live](https://www.fishtank.live/)
 
 Updated to support the new website for season 5.
 
+This is a season agnostic repo that was first started during season 2 - https://github.com/barrettotte/fishtank-s02-qol.
+
 ## Setup
 
 Install [Tampermonkey](https://github.com/Tampermonkey/tampermonkey) or equivalent userscript manager as a browser extension
