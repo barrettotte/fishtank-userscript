@@ -114,6 +114,8 @@
       const camBtn = document.createElement('button');
       camBtn.textContent = room;
 
+      camBtn.style.backgroundColor = '#191D21';
+      camBtn.style.color = midGrayColor;
       camBtn.style.border = `1px solid ${darkGrayColor}`;
       camBtn.style.fontSize = '12px';
       camBtn.style.paddingTop = '5px';
