@@ -4,7 +4,7 @@ UserScript to tweak/add features to [fishtank.live](https://www.fishtank.live/)
 
 Updated to support the new website for season 5.
 
-This is a season agnostic repo that was first started during season 2 - https://github.com/barrettotte/fishtank-s02-qol.
+I'm hoping to continue updating this repo as seasons continue, this was first started during season 2 in a different repo - https://github.com/barrettotte/fishtank-s02-qol.
 
 ## Setup
 
