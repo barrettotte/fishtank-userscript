@@ -763,8 +763,11 @@
 
       const widget = buildWidget();
 
-      // append to document.body to avoid mutating React's DOM tree (causes hydration error #418)
-      document.body.appendChild(widget);
+      // insert inside the z-1 content container so the widget participates in the same
+      // stacking context as the chat panel (z-2) and site dropdowns (z-6+).
+      // by document-idle, React hydration is complete so appending here is safe.
+      const contentContainer = document.querySelector('div.relative.z-1') || document.body;
+      contentContainer.appendChild(widget);
 
       // measure grid height now that widget is in DOM, then re-render with correct max-height
       requestAnimationFrame(() => {
@@ -785,7 +788,7 @@
       #${newCamWidgetId} {
         position: fixed;
         right: 0;
-        z-index: 5;
+        z-index: 3;
         border-radius: 0.5rem;
         border-top: 2px solid color-mix(in oklab, var(--base-light-300) 75%, transparent);
         border-bottom: 3px solid color-mix(in oklab, var(--base-light-700) 50%, transparent);
