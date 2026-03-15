@@ -4,6 +4,12 @@ UserScript to tweak/add features to [fishtank.live](https://www.fishtank.live/)
 
 Updated to support the new website for season 5.
 
+## Setup
+
+Install [Tampermonkey](https://github.com/Tampermonkey/tampermonkey) or equivalent userscript manager as a browser extension
+
+Either copy/paste `main.js` or use remote source `https://raw.githubusercontent.com/barrettotte/fishtank-userscript/master/main.js`
+
 ## Season 5
 
 ### Camera List Widget
@@ -40,9 +46,3 @@ This toggles the right panel to `display: none` and allows theater mode without 
 On small screens (< 1100px) the chat toggle button will be hidden.
 
 ![docs/s4-chat-toggle.png](docs/s4-chat-toggle.png)
-
-## Setup
-
-Install [Tampermonkey](https://github.com/Tampermonkey/tampermonkey) or equivalent userscript manager as a browser extension
-
-Either copy/paste `main.js` or use remote source `https://raw.githubusercontent.com/barrettotte/fishtank-userscript/master/main.js`
