@@ -24,6 +24,8 @@ The active camera is styled with the primary color in the camera list.
 
 ![docs/s5-cams-list.png](docs/s5-cams-list.png)
 
+![docs/s5-open-classic.png](docs/s5-open-classic.png)
+
 ## Classic
 
 This userscript also supports [https://classic.fishtank.live/](https://classic.fishtank.live/) since I think it was never changed after season 4.
