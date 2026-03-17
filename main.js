@@ -15,20 +15,12 @@
 
 (() => {
 
-  const camSwitchTimeoutMs = 250;
-
-  const offYellowColor = '#f8ec94';
-  const midGrayColor = '#aaa';
-  const darkGrayColor = '#505050';
-
-  const camListWidgetId = 'cams_cams__custom';
-  const chatToggleId = 'custom_chat_toggle';
-
-  // shared sorted room name list used by both sites
+  // sorted room name list (must match site's displayed names)
   const roomNames = [
-    'BKNY', 'BRRR', 'CFSL', 'CODR', 'DMCL', 'DMRM',
-    'DNRM', 'FOYR', 'GSRM', 'HWDN', 'HWUP', 'JCKZ',
-    'KTCH', 'MRKE',
+    'Balcony', 'Bar', 'Bar Alternate', 'Bar PTZ', 'Cameraman', 'Closet',
+    'Confessional', 'Corridor', 'Dining Room', 'Director Mode', 'Dorm',
+    'Dorm Alternate', 'Foyer', 'Glassroom', 'Hallway Down', 'Hallway Up',
+    'Jacuzzi', 'Kitchen', 'Market', 'Market Alternate',
   ];
 
   // Returns promise that resolves when element matching selector appears in DOM
@@ -59,6 +51,13 @@
 
   // Initializes classic site (classic.fishtank.live)
   function initClassic() {
+    const camSwitchTimeoutMs = 250;
+    const offYellowColor = '#f8ec94';
+    const midGrayColor = '#aaa';
+    const darkGrayColor = '#505050';
+    const camListWidgetId = 'cams_cams__custom';
+    const chatToggleId = 'custom_chat_toggle';
+
     const leftPanelSelector = "div[class^='layout_left__']";
     const rightPanelSelector = "div[class^='layout_right__']";
     const statusBarSelector = "div[class^='status-bar_status-bar__']";
@@ -68,20 +67,26 @@
 
     // room name -> camera element ID (classic site only)
     const classicCameraIds = {
-      'BKNY': 'bkny-5',
-      'BRRR': 'brrr-5',
-      'CFSL': 'cfsl-5',
-      'CODR': 'codr-5',
-      'DMCL': 'dmcl-5',
-      'DMRM': 'dmrm-5',
-      'DNRM': 'dnrm-5',
-      'FOYR': 'foyr-5',
-      'GSRM': 'gsrm-5',
-      'HWDN': 'hwdn-5',
-      'HWUP': 'hwup-5',
-      'JCKZ': 'jckz-5',
-      'KTCH': 'ktch-5',
-      'MRKE': 'mrke-5',
+      "Balcony": "bkny-5",
+      "Bar": "brrr-5",
+      "Bar Alternate": "brrr2-5",
+      "Bar PTZ": "brpz-5",
+      "Cameraman": "cameraman-5",
+      "Closet": "dmcl-5",
+      "Confessional": "cfsl-5",
+      "Corridor": "codr-5",
+      "Dining Room": "dnrm-5",
+      "Director Mode": "dirc-5",
+      "Dorm": "dmrm-5",
+      "Dorm Alternate": "dmrm2-5",
+      "Foyer": "foyr-5",
+      "Glassroom": "gsrm-5",
+      "Hallway Down": "hwdn-5",
+      "Hallway Up": "hwup-5",
+      "Jacuzzi": "jckz-5",
+      "Kitchen": "ktch-5",  
+      "Market": "mrke-5",
+      "Market Alternate": "mrke2-5",
     };
 
     const closeBtnSelectors = [
@@ -128,9 +133,9 @@
         pressCloseButton();
 
         setTimeout(() => {
-          waitForElement(`#${camId}`).then((camEl) => {
-            camEl.click();
-          })
+          waitForElement(`#${camId}`)
+            .then((camEl) => camEl.click())
+            .catch((err) => console.warn('fishtank-userscript:', err.message))
         }, camSwitchTimeoutMs);
       };
 
@@ -222,7 +227,7 @@
       body.style.height = '100%';
       body.style.padding = '8px';
 
-      for (const room of roomNames) {
+      for (const room of Object.keys(classicCameraIds).sort()) {
         body.appendChild(createCameraButton(room, classicCameraIds[room]));
       }
       container.appendChild(body);
@@ -346,7 +351,7 @@
           mutation.addedNodes.forEach(node => {
             if (node.nodeType === 1) {
               node.querySelectorAll(livestreamNameSelector).forEach(descendant => {
-                highlightActiveCameraInWidget(descendant.textContent.trim().toUpperCase());
+                highlightActiveCameraInWidget(descendant.textContent.trim());
               });
             }
           });
@@ -360,7 +365,7 @@
         } else if (mutation.type === 'characterData') {
           const parent = mutation.target.parentElement;
           if (parent && Array.from(parent.classList).find(c => c.startsWith('live-stream-player_name__'))) {
-            highlightActiveCameraInWidget(parent.textContent.trim().toUpperCase());
+            highlightActiveCameraInWidget(parent.textContent.trim());
           }
         }
       }
@@ -387,13 +392,14 @@
     const camBtnDefaultBg = 'rgba(255,255,255,0.35)';
     const camBtnDefaultBorder = 'rgba(0,0,0,0.15)';
 
-    // camera grid layout order (must contain the same rooms as roomNames)
-    const roomNamesGrid = [
-      'DMRM', 'CFSL', 'BKNY', 'FOYR',
-      'DMCL', 'GSRM', 'BRRR', 'CODR',
-      'KTCH', 'JCKZ', 'DNRM', 'MRKE',
-      'HWDN', 'HWUP',
-    ];
+    // alternate cameras: switch to parent first, then click transition polygon
+    // xyRatio is the first X / first Y of the polygon's points (scale-invariant across screen sizes)
+    const altCameras = {
+      'Bar Alternate': {parent: 'Bar', xyRatio: 9.19},
+      'Dorm Alternate': {parent: 'Dorm', xyRatio: 390},
+      'Market Alternate': {parent: 'Market', xyRatio: 263},
+    };
+
     let viewMode = 'grid'; // 'list' or 'grid'
     let isCollapsed = false;
     let activeRoom = null;
@@ -402,7 +408,9 @@
     // Locates chat panel element by matching its fixed positioning and responsive width classes
     function findChatPanel() {
       const candidates = document.querySelectorAll('div.fixed.bottom-0.right-0');
-      if (candidates.length === 1) return candidates[0];
+      if (candidates.length === 1) {
+        return candidates[0];
+      }
       // chat panel has responsive width constraint or z-index
       for (const el of candidates) {
         if (/\blg:w-\[|xl:w-\[|\bz-\d/.test(el.className)) {
@@ -426,7 +434,7 @@
         // match any leaf div (no child elements) whose text is exactly the room name
         const divs = btn.querySelectorAll('div');
         for (const div of divs) {
-          if (div.children.length === 0 && div.textContent.trim().toUpperCase() === roomName) {
+          if (div.children.length === 0 && div.textContent.trim() === roomName) {
             return btn;
           }
         }
@@ -444,7 +452,7 @@
         }
         const candidates = overlay.querySelectorAll('div.absolute');
         for (const el of candidates) {
-          const text = el.textContent?.trim().toUpperCase();
+          const text = el.textContent?.trim();
           if (text && roomNames.includes(text)) {
             return text;
           }
@@ -473,6 +481,67 @@
 
     // Switches to a camera by simulating a click on the matching tile in the site's camera grid
     function switchCamera(roomName) {
+      const altCamera = altCameras[roomName];
+      if (altCamera) {
+        // find matching transition polygon by scale-invariant X/Y ratio
+        const findAltPolygon = () => {
+          const polygons = document.querySelectorAll('polygon');
+          return Array.from(polygons).find(p => {
+            const pts = p.getAttribute('points');
+            if (!pts) {
+              return false;
+            }
+            const coords = pts.split(',').map(Number);
+            if (coords.length < 2 || coords[1] === 0) {
+              return false;
+            }
+            const ratio = coords[0] / coords[1];
+            return Math.abs(ratio - altCamera.xyRatio) / altCamera.xyRatio < 0.15;
+          });
+        };
+
+        // click the center of a polygon for reliable hit detection
+        const clickPolygon = (polygon) => {
+          const rect = polygon.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          polygon.dispatchEvent(new MouseEvent('click', {
+            bubbles: true, clientX: cx, clientY: cy,
+          }));
+          highlightActiveCamera(roomName);
+          console.log(`fishtank-userscript: switched to ${roomName}`);
+        };
+
+        const alreadyOnParent = activeRoom === altCamera.parent;
+
+        // if already on the parent stream, try clicking the polygon immediately
+        if (alreadyOnParent) {
+          const polygon = findAltPolygon();
+          if (polygon) {
+            clickPolygon(polygon);
+            return;
+          }
+        }
+
+        // poll for the polygon (skip parent switch + delay if already on it)
+        if (!alreadyOnParent) {
+          switchCamera(altCamera.parent);
+        }
+        console.log(`fishtank-userscript: waiting for transition polygon to switch to ${roomName}`);
+        const pollForPolygon = (attempts = 0) => {
+          const match = findAltPolygon();
+          if (match) {
+            clickPolygon(match);
+          } else if (attempts < 60) {
+            setTimeout(() => pollForPolygon(attempts + 1), 500);
+          } else {
+            console.warn(`fishtank-userscript: transition polygon not found for ${roomName}`);
+          }
+        };
+        setTimeout(() => pollForPolygon(), alreadyOnParent ? 0 : 2000);
+        return;
+      }
+
       const gridBtn = findCameraGridButton(roomName);
       if (gridBtn) {
         console.log(`fishtank-userscript: switching to camera ${roomName}`);
@@ -524,8 +593,13 @@
     // Applies grid layout styles to a button or measurement element
     function applyGridStyles(el) {
       el.style.flex = '0 0 calc(25% - 3px)';
+      el.style.minWidth = '0';
       el.style.textAlign = 'center';
       el.style.padding = '4px 2px';
+      el.style.fontSize = '11px';
+      el.style.overflow = 'hidden';
+      el.style.whiteSpace = 'nowrap';
+      el.style.textOverflow = 'ellipsis';
     }
 
     let gridHeight = null;
@@ -540,7 +614,7 @@
       body.style.flexDirection = 'row';
       body.style.flexWrap = 'wrap';
       body.style.gap = '4px';
-      for (const room of roomNamesGrid) {
+      for (const room of roomNames) {
         const el = document.createElement('div');
         el.textContent = room;
         el.style.cssText = `
@@ -558,7 +632,7 @@
       body.style.maxHeight = oldMaxHeight;
     }
 
-    // Populates widget body with camera buttons in either list (alphabetical) or grid (site order) layout
+    // Populates widget body with camera buttons in either list or grid layout (both alphabetical)
     function renderCamButtons(body) {
       body.replaceChildren();
 
@@ -583,7 +657,7 @@
         body.style.flexWrap = 'wrap';
         body.style.gap = '4px';
 
-        for (const room of roomNamesGrid) {
+        for (const room of roomNames) {
           const btn = createCamButton(room);
           applyGridStyles(btn);
           body.appendChild(btn);
@@ -668,6 +742,7 @@
         return btn;
       }
 
+      const classicSvg = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>`;
       const listSvg = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></svg>`;
       const gridSvg = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>`;
       const minusSvg = `<svg width="1em" height="1em" viewBox="0 0 512 512" fill="none"><path d="M400 256H112" stroke="currentColor" stroke-width="32" stroke-linecap="square" stroke-linejoin="round"/></svg>`;
@@ -705,8 +780,15 @@
         requestAnimationFrame(positionWidget);
       });
 
+      const classicBtn = createHeaderBtn(classicSvg, 'secondary');
+      classicBtn.title = 'Open classic site';
+      classicBtn.addEventListener('click', () => {
+        window.open('https://classic.fishtank.live/', '_blank');
+      });
+
       controlsWrap.appendChild(gridBtn);
       controlsWrap.appendChild(listBtn);
+      controlsWrap.appendChild(classicBtn);
       controlsWrap.appendChild(collapseBtn);
 
       header.appendChild(titleWrap);
@@ -727,6 +809,7 @@
           collapseBtn.title = 'Expand';
           listBtn.style.display = 'none';
           gridBtn.style.display = 'none';
+          classicBtn.style.display = 'none';
         } else {
           bodyWrap.style.display = '';
           renderCamButtons(body);
@@ -734,6 +817,7 @@
           collapseBtn.title = 'Collapse';
           listBtn.style.display = 'inline-flex';
           gridBtn.style.display = 'inline-flex';
+          classicBtn.style.display = 'inline-flex';
         }
         requestAnimationFrame(positionWidget);
       });
@@ -823,6 +907,18 @@
     `;
     document.head.appendChild(style);
 
+    // Resets chat panel styles added by positionWidget
+    function resetChatInnerPanel(chatPanel) {
+      if (!chatPanel) {
+        return;
+      }
+      const inner = chatPanel.firstElementChild;
+      if (inner) {
+        inner.style.removeProperty('margin-top');
+        inner.style.removeProperty('overflow');
+      }
+    }
+
     // Aligns camera widget with the chat panel. Handles theater mode, collapsed state, and chat visibility
     function positionWidget() {
       const widget = document.getElementById(newCamWidgetId);
@@ -854,9 +950,7 @@
       // hide widget in theater mode
       if (isTheaterMode) {
         widget.style.display = 'none';
-        if (chatPanel) {
-          chatPanel.style.removeProperty('padding-top');
-        }
+        resetChatInnerPanel(chatPanel);
         return;
       }
       widget.style.display = '';
@@ -879,10 +973,14 @@
         widget.style.left = chatRect.left + 'px';
         widget.style.right = 'auto';
 
-        // push chat content down to make room for the widget
+        // shrink chat to make room for the widget above it
         const widgetHeight = widget.getBoundingClientRect().height;
         const gap = 8;
-        chatPanel.style.setProperty('padding-top', (widgetHeight + gap) + 'px', 'important');
+        const innerPanel = chatPanel.firstElementChild;
+        if (innerPanel) {
+          innerPanel.style.setProperty('margin-top', (widgetHeight + gap) + 'px', 'important');
+          innerPanel.style.setProperty('overflow', 'hidden', 'important');
+        }
       } else {
         // chat minimized or hidden. position directly above the chat bar, match chat width
         widget.style.top = '';
@@ -892,9 +990,7 @@
         const chatBottom = chatHasSize ? (window.innerHeight - chatRect.top + 2) : 24;
         widget.style.bottom = chatBottom + 'px';
 
-        if (chatPanel) {
-          chatPanel.style.removeProperty('padding-top');
-        }
+        resetChatInnerPanel(chatPanel);
       }
     }
 
@@ -902,7 +998,9 @@
     function setupCameraObserver() {
       let detectTimeout = null;
       const observer = new MutationObserver(() => {
-        if (detectTimeout) return;
+        if (detectTimeout) {
+          return;
+        }
         detectTimeout = setTimeout(() => {
           detectTimeout = null;
           const detected = detectActiveCamera();
