@@ -2,7 +2,7 @@
 // @name         fishtank-userscript
 // @description  UserScript to tweak/add features to fishtank.live (season 5)
 // @namespace    http://tampermonkey.net/
-// @version      5.0.0
+// @version      5.0.1
 // @author       barrettotte
 // @license      MIT
 // @match        *://www.fishtank.live/*
@@ -341,6 +341,7 @@
     waitForElement(missionWidgetSelector)
       .then((missionWidget) => addCameraListWidget(missionWidget))
       .catch((err) => console.warn('fishtank-userscript:', err.message));
+
     waitForElement(statusBarSelector)
       .then((statusBar) => addChatToggleClassic(statusBar))
       .catch((err) => console.warn('fishtank-userscript:', err.message));
@@ -386,12 +387,6 @@
 
   // Initializes new site (www.fishtank.live)
   function initNew() {
-    const newCamWidgetId = 'new-cam-list__custom';
-    const newCamStyleId = 'new-cam-style__custom';
-
-    const camBtnDefaultBg = 'rgba(255,255,255,0.35)';
-    const camBtnDefaultBorder = 'rgba(0,0,0,0.15)';
-
     // alternate cameras: switch to parent first, then click transition polygon
     // xyRatio is the first X / first Y of the polygon's points (scale-invariant across screen sizes)
     const altCameras = {
@@ -400,38 +395,16 @@
       'Market Alternate': {parent: 'Market', xyRatio: 263},
     };
 
-    let viewMode = 'grid'; // 'list' or 'grid'
-    let isCollapsed = false;
+    const altBtnMarker = 'data-userscript-alt';
     let activeRoom = null;
-    let wasTheaterMode = false;
-
-    // Locates chat panel element by matching its fixed positioning and responsive width classes
-    function findChatPanel() {
-      const candidates = document.querySelectorAll('div.fixed.bottom-0.right-0');
-      if (candidates.length === 1) {
-        return candidates[0];
-      }
-      // chat panel has responsive width constraint or z-index
-      for (const el of candidates) {
-        if (/\blg:w-\[|xl:w-\[|\bz-\d/.test(el.className)) {
-          return el;
-        }
-      }
-      // fallback to largest fixed bottom-right panel by child count
-      let best = null;
-      for (const el of candidates) {
-        if (!best || el.children.length > best.children.length) {
-          best = el;
-        }
-      }
-      return best;
-    }
 
     // Finds a camera tile button in site's camera grid by matching its room name text
     function findCameraGridButton(roomName) {
       const buttons = document.querySelectorAll('button');
       for (const btn of buttons) {
-        // match any leaf div (no child elements) whose text is exactly the room name
+        if (btn.hasAttribute(altBtnMarker)) {
+          continue;
+        }
         const divs = btn.querySelectorAll('div');
         for (const div of divs) {
           if (div.children.length === 0 && div.textContent.trim() === roomName) {
@@ -446,7 +419,6 @@
     function detectActiveCamera() {
       const fixedOverlays = document.querySelectorAll('div.fixed');
       for (const overlay of fixedOverlays) {
-        // stream player overlay: contains a video element or a close button
         if (!overlay.querySelector('video, button[class*="close"], button[aria-label*="close" i]')) {
           continue;
         }
@@ -461,25 +433,7 @@
       return null;
     }
 
-    // Updates all camera button styles in the widget to highlight the active room and reset the rest
-    function highlightActiveCamera(room) {
-      activeRoom = room;
-
-      const widget = document.getElementById(newCamWidgetId);
-      if (!widget) {
-        return;
-      }
-      const buttons = widget.querySelectorAll('button[data-room]');
-      for (const btn of buttons) {
-        const isActive = btn.dataset.room === room;
-        btn.style.color = isActive ? 'var(--base-primary, #df4e1e)' : 'black';
-        btn.style.fontVariationSettings = isActive ? '"wght" 800' : '"wght" 700';
-        btn.style.backgroundColor = isActive ? 'rgba(255,255,255,0.55)' : camBtnDefaultBg;
-        btn.style.borderColor = isActive ? 'var(--base-primary, #df4e1e)' : camBtnDefaultBorder;
-      }
-    }
-
-    // Switches to a camera by simulating a click on the matching tile in the site's camera grid
+    // Switches to a camera, handling alt cameras via polygon transition
     function switchCamera(roomName) {
       const altCamera = altCameras[roomName];
       if (altCamera) {
@@ -508,10 +462,9 @@
           polygon.dispatchEvent(new MouseEvent('click', {
             bubbles: true, clientX: cx, clientY: cy,
           }));
-          highlightActiveCamera(roomName);
+          activeRoom = roomName;
           console.log(`fishtank-userscript: switched to ${roomName}`);
         };
-
         const alreadyOnParent = activeRoom === altCamera.parent;
 
         // if already on the parent stream, try clicking the polygon immediately
@@ -528,6 +481,7 @@
           switchCamera(altCamera.parent);
         }
         console.log(`fishtank-userscript: waiting for transition polygon to switch to ${roomName}`);
+
         const pollForPolygon = (attempts = 0) => {
           const match = findAltPolygon();
           if (match) {
@@ -546,470 +500,105 @@
       if (gridBtn) {
         console.log(`fishtank-userscript: switching to camera ${roomName}`);
         gridBtn.click();
-        highlightActiveCamera(roomName);
+        activeRoom = roomName;
       } else {
         console.warn(`fishtank-userscript: camera button not found for ${roomName}`);
       }
     }
 
-    // Creates a styled camera button element for the new site widget with hover and click handlers
-    function createCamButton(room) {
+    // Creates an alt camera button matching the official grid's styling
+    function createAltGridButton(roomName, parentBtn) {
+      const offline = parentBtn && (
+        parentBtn.classList.contains('opacity-60') || parentBtn.classList.contains('cursor-not-allowed')
+      );
+
       const btn = document.createElement('button');
-      btn.dataset.room = room;
-      btn.textContent = room;
-      btn.style.cssText = `
-        border: 1px solid ${camBtnDefaultBorder};
-        border-radius: 4px;
-        padding: 4px 8px;
-        font-size: 12px;
-        font-weight: 700;
-        font-variation-settings: "wght" 700;
-        font-family: inherit;
-        color: black;
-        background-color: ${camBtnDefaultBg};
-        cursor: pointer;
-        scroll-snap-align: start;
-        transition: background-color 0.1s, border-color 0.1s;
-      `;
+      btn.setAttribute(altBtnMarker, '');
+      btn.className = offline
+        ? 'p-[2px] select-none group hover:brightness-105 hover:outline-1 hover:outline-tertiary cursor-not-allowed opacity-60 bg-gradient-to-b from-dark-400/75 to-dark-500/75'
+        : 'p-[2px] select-none group hover:brightness-105 hover:outline-1 hover:outline-tertiary cursor-pointer bg-gradient-to-b from-dark-400/75 to-dark-500/75';
 
-      btn.addEventListener('click', () => switchCamera(room));
-      btn.addEventListener('mouseenter', () => {
-        btn.style.backgroundColor = 'var(--base-tertiary)';
-        btn.style.borderColor = 'rgba(0,0,0,0.3)';
-      });
-      btn.addEventListener('mouseleave', () => {
-        if (btn.dataset.room === activeRoom) {
-          btn.style.backgroundColor = 'rgba(255,255,255,0.55)';
-          btn.style.borderColor = 'var(--base-primary, #df4e1e)';
-        } else {
-          btn.style.backgroundColor = camBtnDefaultBg;
-          btn.style.borderColor = camBtnDefaultBorder;
-        }
-      });
+      const inner = document.createElement('div');
+      inner.className = offline
+        ? 'px-[1px] py-0.5 text-[11px] 3xl:text-xs font-medium tracking-tighter 3xl:tracking-normal whitespace-nowrap overflow-hidden text-ellipsis text-center border leading-tight group-hover:!text-link text-light-text/30 bg-gradient-to-t from-dark-300 to-dark-400 border-light/25'
+        : 'px-[1px] py-0.5 text-[11px] 3xl:text-xs font-medium tracking-tighter 3xl:tracking-normal whitespace-nowrap overflow-hidden text-ellipsis text-center border leading-tight group-hover:!text-link text-light-text bg-gradient-to-t from-dark-300 to-dark-400 text-shadow-md border-light/25';
+      inner.textContent = roomName;
 
+      btn.appendChild(inner);
+      if (!offline) {
+        btn.addEventListener('click', () => switchCamera(roomName));
+      }
       return btn;
     }
 
-    // Applies grid layout styles to a button or measurement element
-    function applyGridStyles(el) {
-      el.style.flex = '0 0 calc(25% - 3px)';
-      el.style.minWidth = '0';
-      el.style.textAlign = 'center';
-      el.style.padding = '4px 2px';
-      el.style.fontSize = '11px';
-      el.style.overflow = 'hidden';
-      el.style.whiteSpace = 'nowrap';
-      el.style.textOverflow = 'ellipsis';
-    }
-
-    let gridHeight = null;
-
-    // Temporarily renders the grid layout to measure its natural height, used to cap the scrollable area
-    function measureGridHeight(body) {
-      const oldDisplay = body.style.display;
-      const oldMaxHeight = body.style.maxHeight;
-      body.style.maxHeight = 'none';
-      body.replaceChildren();
-      body.style.display = 'flex';
-      body.style.flexDirection = 'row';
-      body.style.flexWrap = 'wrap';
-      body.style.gap = '4px';
-      for (const room of roomNames) {
-        const el = document.createElement('div');
-        el.textContent = room;
-        el.style.cssText = `
-          border: 1px solid transparent;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 700;
-        `;
-        applyGridStyles(el);
-        body.appendChild(el);
-      }
-      gridHeight = body.scrollHeight;
-      body.replaceChildren();
-      body.style.display = oldDisplay;
-      body.style.maxHeight = oldMaxHeight;
-    }
-
-    // Populates widget body with camera buttons in either list or grid layout (both alphabetical)
-    function renderCamButtons(body) {
-      body.replaceChildren();
-
-      body.style.maxHeight = gridHeight ? gridHeight + 'px' : 'none';
-      body.style.scrollSnapType = 'y proximity';
-
-      if (viewMode === 'list') {
-        body.style.display = 'flex';
-        body.style.flexDirection = 'column';
-        body.style.flexWrap = 'nowrap';
-        body.style.gap = '4px';
-
-        for (const room of roomNames) {
-          const btn = createCamButton(room);
-          btn.style.width = '100%';
-          btn.style.textAlign = 'left';
-          body.appendChild(btn);
-        }
-      } else {
-        body.style.display = 'flex';
-        body.style.flexDirection = 'row';
-        body.style.flexWrap = 'wrap';
-        body.style.gap = '4px';
-
-        for (const room of roomNames) {
-          const btn = createCamButton(room);
-          applyGridStyles(btn);
-          body.appendChild(btn);
-        }
-      }
-
-      if (activeRoom) {
-        highlightActiveCamera(activeRoom);
-      }
-    }
-
-    // Constructs full camera list widget DOM: header (icon, title, view toggles, collapse) and scrollable body
-    function buildWidget() {
-      const widget = document.createElement('div');
-      widget.id = newCamWidgetId;
-
-      const header = document.createElement('div');
-      header.style.cssText = `
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px;
-        user-select: none;
-      `;
-
-      const titleWrap = document.createElement('div');
-      titleWrap.style.cssText = 'display:flex; align-items:center; gap:0.25rem;';
-
-      const camIcon = document.createElement('span');
-      camIcon.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="currentColor"/>
-      </svg>`;
-      camIcon.style.cssText = 'display:inline-flex; align-items:center; color:var(--base-primary); opacity:0.9; filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.15));';
-
-      const title = document.createElement('span');
-      title.textContent = 'Cameras';
-      title.style.cssText = '--font-wght:700; font-weight:700; color:var(--base-dark-text, black); letter-spacing:-0.025em; line-height:1.5rem;';
-
-      titleWrap.appendChild(camIcon);
-      titleWrap.appendChild(title);
-
-      const controlsWrap = document.createElement('div');
-      controlsWrap.style.cssText = 'display:flex; gap:2px; align-items:center;';
-
-      // Creates header icon button matching site's gradient stuff
-      function createHeaderBtn(iconHtml, variant) {
-        const gradients = {
-          primary: {
-            outer: 'background-image:linear-gradient(to right in oklab, var(--base-primary-400), color-mix(in oklab, var(--base-primary-500) 90%, transparent));',
-            inner: 'background-image:linear-gradient(to top in oklab, var(--base-primary-400), var(--base-primary-500));',
-          },
-          secondary: {
-            outer: 'background-image:linear-gradient(to right in oklab, var(--base-secondary-500), color-mix(in oklab, var(--base-secondary-600) 75%, transparent));',
-            inner: 'background-image:linear-gradient(to top in oklab, var(--base-secondary-400), var(--base-secondary-500));',
-          },
-        };
-        const g = gradients[variant];
-
-        const btn = document.createElement('button');
-        btn.style.cssText = `
-          ${g.outer}
-          padding:2px; border:none; border-radius:6px;
-          display:inline-flex; align-items:center; justify-content:center;
-          cursor:pointer; transition:filter 0.1s;
-        `;
-
-        const inner = document.createElement('div');
-        inner.innerHTML = iconHtml;
-        inner.style.cssText = `
-          ${g.inner}
-          display:flex; align-items:center; justify-content:center;
-          padding:2px;
-          border-radius:0.25rem; border:none;
-          color:white;
-        `;
-        btn.appendChild(inner);
-
-        btn.addEventListener('mouseenter', () => { btn.style.filter = 'brightness(1.05)'; });
-        btn.addEventListener('mouseleave', () => { btn.style.filter = ''; });
-
-        return btn;
-      }
-
-      const classicSvg = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>`;
-      const listSvg = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></svg>`;
-      const gridSvg = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>`;
-      const minusSvg = `<svg width="1em" height="1em" viewBox="0 0 512 512" fill="none"><path d="M400 256H112" stroke="currentColor" stroke-width="32" stroke-linecap="square" stroke-linejoin="round"/></svg>`;
-      const plusSvg = `<svg width="1em" height="1em" viewBox="0 0 512 512" fill="none"><path d="M256 112v288m144-144H112" stroke="currentColor" stroke-width="32" stroke-linecap="square" stroke-linejoin="round"/></svg>`;
-
-      const listBtn = createHeaderBtn(listSvg, 'secondary');
-      listBtn.title = 'List view';
-
-      const gridBtn = createHeaderBtn(gridSvg, 'secondary');
-      gridBtn.title = 'Grid view';
-
-      const collapseBtn = createHeaderBtn(minusSvg, 'primary');
-      collapseBtn.title = 'Collapse';
-
-      // Sets opacity on list/grid toggle buttons to indicate which view mode is active
-      function updateToggleStyles() {
-        listBtn.style.opacity = viewMode === 'list' ? '1' : '0.6';
-        gridBtn.style.opacity = viewMode === 'grid' ? '1' : '0.6';
-      }
-      updateToggleStyles();
-
-      listBtn.addEventListener('click', () => {
-        console.log('fishtank-userscript: switched to list view');
-        viewMode = 'list';
-        updateToggleStyles();
-        renderCamButtons(body);
-        requestAnimationFrame(positionWidget);
-      });
-
-      gridBtn.addEventListener('click', () => {
-        console.log('fishtank-userscript: switched to grid view');
-        viewMode = 'grid';
-        updateToggleStyles();
-        renderCamButtons(body);
-        requestAnimationFrame(positionWidget);
-      });
-
-      const classicBtn = createHeaderBtn(classicSvg, 'secondary');
-      classicBtn.title = 'Open classic site';
-      classicBtn.addEventListener('click', () => {
-        window.open('https://classic.fishtank.live/', '_blank');
-      });
-
-      controlsWrap.appendChild(gridBtn);
-      controlsWrap.appendChild(listBtn);
-      controlsWrap.appendChild(classicBtn);
-      controlsWrap.appendChild(collapseBtn);
-
-      header.appendChild(titleWrap);
-      header.appendChild(controlsWrap);
-
-      const body = document.createElement('div');
-      body.dataset.camBody = '';
-      body.style.cssText = 'padding:2px 4px 0; overflow-y:auto; scroll-snap-type:y proximity;';
-      renderCamButtons(body);
-
-      const collapseBtnInner = collapseBtn.querySelector('div');
-      collapseBtn.addEventListener('click', () => {
-        isCollapsed = !isCollapsed;
-        console.log(`fishtank-userscript: camera widget ${isCollapsed ? 'collapsed' : 'expanded'}`);
-        if (isCollapsed) {
-          bodyWrap.style.display = 'none';
-          collapseBtnInner.innerHTML = plusSvg;
-          collapseBtn.title = 'Expand';
-          listBtn.style.display = 'none';
-          gridBtn.style.display = 'none';
-          classicBtn.style.display = 'none';
-        } else {
-          bodyWrap.style.display = '';
-          renderCamButtons(body);
-          collapseBtnInner.innerHTML = minusSvg;
-          collapseBtn.title = 'Collapse';
-          listBtn.style.display = 'inline-flex';
-          gridBtn.style.display = 'inline-flex';
-          classicBtn.style.display = 'inline-flex';
-        }
-        requestAnimationFrame(positionWidget);
-      });
-
-      const bodyWrap = document.createElement('div');
-      bodyWrap.style.cssText = 'padding-bottom:6px;';
-      bodyWrap.appendChild(body);
-
-      widget.appendChild(header);
-      widget.appendChild(bodyWrap);
-
-      return widget;
-    }
-
-    // Inserts camera widget into the page body and initializes its layout measurements
-    function injectWidget() {
-      if (document.getElementById(newCamWidgetId)) {
+    // Injects alt camera buttons into the official camera grid, after their parent buttons
+    function injectAltButtons() {
+      const grid = document.querySelector('.grid.grid-cols-5');
+      if (!grid || grid.querySelector(`[${altBtnMarker}]`)) {
         return;
       }
 
-      const chatPanel = findChatPanel();
-      if (!chatPanel) {
-        console.warn('fishtank-userscript: chat panel not found, retrying...');
-        setTimeout(injectWidget, 1000);
-        return;
-      }
+      // build ordered list: for each existing button, append its alt (if any) right after
+      const existing = Array.from(grid.children);
+      const fragment = document.createDocumentFragment();
+      for (const child of existing) {
+        fragment.appendChild(child);
+        const div = child.querySelector?.('div');
+        const name = div?.textContent?.trim();
 
-      const widget = buildWidget();
-
-      // insert inside the z-1 content container so the widget participates in the same
-      // stacking context as the chat panel (z-2) and site dropdowns (z-6+).
-      // by document-idle, React hydration is complete so appending here is safe.
-      const contentContainer = document.querySelector('div.relative.z-1') || document.body;
-      contentContainer.appendChild(widget);
-
-      // measure grid height now that widget is in DOM, then re-render with correct max-height
-      requestAnimationFrame(() => {
-        const body = widget.querySelector('[data-cam-body]');
-        if (body) {
-          measureGridHeight(body);
-          renderCamButtons(body);
-          requestAnimationFrame(positionWidget);
+        // check if this button has an alt camera
+        const altName = Object.keys(altCameras).find(k => altCameras[k].parent === name);
+        if (altName) {
+          fragment.appendChild(createAltGridButton(altName, child));
         }
-      });
 
-      console.log('fishtank-userscript: camera list widget injected');
+      }
+      grid.replaceChildren(fragment);
+      console.log('fishtank-userscript: injected alt camera buttons');
     }
 
-    const style = document.createElement('style');
-    style.id = newCamStyleId;
-    style.textContent = `
-      #${newCamWidgetId} {
-        position: fixed;
-        right: 0;
-        z-index: 3;
-        border-radius: 0.5rem;
-        border-top: 2px solid color-mix(in oklab, var(--base-light-300) 75%, transparent);
-        border-bottom: 3px solid color-mix(in oklab, var(--base-light-700) 50%, transparent);
-        border-left: 2px solid color-mix(in oklab, var(--base-light-300) 75%, transparent);
-        border-right: 2px solid color-mix(in oklab, var(--base-light-700) 75%, transparent);
-        background-color: var(--base-light);
-        background-image: var(--base-texture-panel);
-        background-repeat: repeat;
-        color: var(--base-dark);
-        filter: drop-shadow(2px 2px 0 #00000050);
-        box-shadow: 0 6px 8px #00000050;
-        width: 100%;
-      }
-      #${newCamWidgetId} *::-webkit-scrollbar {
-        display: none;
-      }
-      #${newCamWidgetId} * {
-        scrollbar-width: none;
-      }
-      @media (min-width: 1024px) {
-        #${newCamWidgetId} { width: 296px; right: 20px; }
-      }
-      @media (min-width: 1536px) {
-        #${newCamWidgetId} { width: 368px; }
-      }
-      @media (min-width: 1920px) {
-        #${newCamWidgetId} { width: 420px; }
-      }
-      @media (max-width: 1023px) {
-        #${newCamWidgetId} { display: none !important; }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Resets chat panel styles added by positionWidget
-    function resetChatInnerPanel(chatPanel) {
-      if (!chatPanel) {
+    // Injects a classic site tab button into the chat panel tab bar
+    function injectClassicTab() {
+      const tabBar = document.querySelector('div.absolute.bottom-full div.flex.items-end');
+      if (!tabBar || tabBar.querySelector('[data-userscript-classic]')) {
         return;
       }
-      const inner = chatPanel.firstElementChild;
-      if (inner) {
-        inner.style.removeProperty('margin-top');
-        inner.style.removeProperty('overflow');
-      }
+      const tab = document.createElement('button');
+      tab.setAttribute('data-userscript-classic', '');
+      tab.className = 'p-0.5 pb-0 rounded-t-md cursor-pointer select-none transition-[filter,box-shadow,transform] duration-150 ease-spring hover:brightness-105 hover:shadow-sm z-0 translate-y-[4px] hover:translate-y-0 bg-gradient-to-r from-secondary-500 to-secondary-600/75';
+      tab.title = 'Open classic site';
+      const inner = document.createElement('div');
+      inner.className = 'px-2.5 py-1 rounded-t-sm border-2 border-b-0 leading-none flex items-center justify-center text-light-text bg-gradient-to-t from-secondary-400 to-secondary-500 border-light/25';
+      inner.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="drop-shadow-[2px_2px_1px_rgba(0,0,0,0.25)]"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>`;
+      tab.appendChild(inner);
+      tab.addEventListener('click', () => window.open('https://classic.fishtank.live/', '_blank'));
+      tabBar.appendChild(tab);
+      console.log('fishtank-userscript: injected classic site tab');
     }
 
-    // Aligns camera widget with the chat panel. Handles theater mode, collapsed state, and chat visibility
-    function positionWidget() {
-      const widget = document.getElementById(newCamWidgetId);
-      const chatPanel = findChatPanel();
-      if (!widget) {
-        console.warn('fishtank-userscript: camera widget missing from DOM, re-injecting');
-        injectWidget();
-        return;
-      }
-      ensureChatObserver(chatPanel);
-
-      const chatRect = chatPanel?.getBoundingClientRect();
-      const chatHasSize = chatRect && chatRect.width > 0;
-      const chatVisibleThreshold = 0.8;
-      const chatVisible = chatHasSize && chatRect.top < window.innerHeight * chatVisibleThreshold;
-
-      // detect theater mode
-      const chatClasses = chatPanel?.className || '';
-      const isTheaterMode = activeRoom && (
-        chatClasses.includes('pointer-events-none') ||
-        chatClasses.includes('translate-x-[18px]')
-      );
-
-      if (isTheaterMode && !wasTheaterMode) {
-        console.log('fishtank-userscript: theater mode detected, hiding camera widget');
-      }
-      wasTheaterMode = isTheaterMode;
-
-      // hide widget in theater mode
-      if (isTheaterMode) {
-        widget.style.display = 'none';
-        resetChatInnerPanel(chatPanel);
-        return;
-      }
-      widget.style.display = '';
-
-      // when both panels collapsed, stack as connected tabs
-      const bothCollapsed = isCollapsed && !chatVisible;
-      if (bothCollapsed) {
-        widget.style.boxShadow = '0 2px 4px #00000030';
-        widget.style.borderBottomWidth = '1px';
-      } else {
-        widget.style.boxShadow = '';
-        widget.style.borderBottomWidth = '';
-      }
-
-      if (chatVisible) {
-        // align widget position and size with chat panel
-        widget.style.top = chatRect.top + 'px';
-        widget.style.bottom = '';
-        widget.style.width = chatRect.width + 'px';
-        widget.style.left = chatRect.left + 'px';
-        widget.style.right = 'auto';
-
-        // shrink chat to make room for the widget above it
-        const widgetHeight = widget.getBoundingClientRect().height;
-        const gap = 8;
-        const innerPanel = chatPanel.firstElementChild;
-        if (innerPanel) {
-          innerPanel.style.setProperty('margin-top', (widgetHeight + gap) + 'px', 'important');
-          innerPanel.style.setProperty('overflow', 'hidden', 'important');
-        }
-      } else {
-        // chat minimized or hidden. position directly above the chat bar, match chat width
-        widget.style.top = '';
-        widget.style.width = chatHasSize ? chatRect.width + 'px' : '';
-        widget.style.left = chatHasSize ? chatRect.left + 'px' : '';
-        widget.style.right = chatHasSize ? 'auto' : '';
-        const chatBottom = chatHasSize ? (window.innerHeight - chatRect.top + 2) : 24;
-        widget.style.bottom = chatBottom + 'px';
-
-        resetChatInnerPanel(chatPanel);
-      }
-    }
-
-    // Watches for DOM changes to detect when the active camera stream changes and updates highlighting
-    function setupCameraObserver() {
+    // Watches for DOM changes to detect active camera and re-inject buttons if React re-renders
+    function setupObserver() {
       let detectTimeout = null;
       const observer = new MutationObserver(() => {
+        // re-inject if React re-rendered the grid
+        injectAltButtons();
+        injectClassicTab();
+
+        // debounced active camera detection
         if (detectTimeout) {
           return;
         }
+
         detectTimeout = setTimeout(() => {
           detectTimeout = null;
           const detected = detectActiveCamera();
           if (detected !== activeRoom) {
             console.log(`fishtank-userscript: active camera changed ${activeRoom || 'none'} -> ${detected || 'none'}`);
-            highlightActiveCamera(detected);
+            activeRoom = detected;
           }
         }, 100);
       });
+
       observer.observe(document.body, {
         childList: true,
         subtree: true,
@@ -1018,74 +607,16 @@
       });
     }
 
-    // Tracks current chat panel element for observer attachment
-    let observedChatPanel = null;
-    let chatObserver = null;
-
-    // Attaches (or re-attaches) mutation observer to the current chat panel element
-    function ensureChatObserver(chatPanel) {
-      if (!chatPanel || chatPanel === observedChatPanel) {
-        return;
-      }
-      if (chatObserver) {
-        chatObserver.disconnect();
-      }
-
-      observedChatPanel = chatPanel;
-      chatObserver = new MutationObserver(() => {
-        requestAnimationFrame(positionWidget);
+    // Wait for official grid to appear, then inject
+    waitForElement('.grid.grid-cols-5')
+      .then(() => {
+        injectAltButtons();
+        injectClassicTab();
+        setupObserver();
+      })
+      .catch(() => {
+        console.warn('fishtank-userscript: official camera grid not found, skipping injection');
       });
-      chatObserver.observe(chatPanel, {
-        attributes: true,
-        attributeFilter: ['style', 'class'],
-      });
-      if (chatPanel.parentElement) {
-        chatObserver.observe(chatPanel.parentElement, {
-          attributes: true,
-          attributeFilter: ['style', 'class'],
-          childList: true,
-        });
-      }
-    }
-
-    // Polls for chat panel, then injects the widget and sets up mutation observers for repositioning
-    function waitAndInject() {
-      const chatPanel = findChatPanel();
-      if (chatPanel) {
-        injectWidget();
-        setTimeout(positionWidget, 100);
-        window.addEventListener('resize', positionWidget);
-
-        ensureChatObserver(chatPanel);
-
-        // observe DOM changes that may affect widget positioning (subtree catches chat panel replacements)
-        let positionRaf = null;
-        const bodyObserver = new MutationObserver(() => {
-          if (!positionRaf) {
-            positionRaf = requestAnimationFrame(() => {
-              positionRaf = null;
-              positionWidget();
-            });
-          }
-        });
-        bodyObserver.observe(document.body, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: ['style', 'class'],
-        });
-        bodyObserver.observe(document.documentElement, {
-          attributes: true,
-          attributeFilter: ['style', 'class'],
-        });
-      } else {
-        console.log('fishtank-userscript: chat panel not found yet, retrying in 500ms...');
-        setTimeout(waitAndInject, 500);
-      }
-    }
-
-    waitAndInject();
-    setupCameraObserver();
 
     console.log('fishtank-userscript: initialized for new site');
   }
@@ -1094,6 +625,7 @@
 
   const hostname = window.location.hostname;
   console.log(`fishtank-userscript: detected site ${hostname}`);
+
   if (hostname === 'classic.fishtank.live') {
     initClassic();
   } else {
