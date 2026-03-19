@@ -14,17 +14,25 @@ Either copy/paste `main.js` or use remote source `https://raw.githubusercontent.
 
 ## Season 5
 
-### Camera List Widget
+### Camera List
 
-Adds cameras widget to right panel above the chat widget.
-Camera list can be displayed in grid of camera shortcodes matching the home screen or scrollable list.
-The active camera is styled with the primary color in the camera list.
+Adds alternate cameras to the camera widget.
 
 ![docs/s5-cams-grid.png](docs/s5-cams-grid.png)
 
-![docs/s5-cams-list.png](docs/s5-cams-list.png)
+### Games Tab
 
-![docs/s5-open-classic.png](docs/s5-open-classic.png)
+Adds games tab with Solitaire, Minesweeper, and Tetris for those downtimes where you have nothing else to do.
+
+![docs/s5-games-solitaire.png](docs/s5-games-solitaire.png)
+
+![docs/s5-games-minesweeper.png](docs/s5-games-minesweeper.png)
+
+![docs/s5-games-tetris.png](docs/s5-games-tetris.png)
+
+### Misc
+
+Adds tab to open the [Classic Fishtank site](https://classic.fishtank.live/)
 
 ## Classic
 
