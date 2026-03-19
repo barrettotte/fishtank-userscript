@@ -84,6 +84,7 @@
       "Hallway Down": "hwdn-5",
       "Hallway Up": "hwup-5",
       "Jacuzzi": "jckz-5",
+      "Jungle Room": "br4j-5",
       "Kitchen": "ktch-5",  
       "Market": "mrke-5",
       "Market Alternate": "mrke2-5",
@@ -606,7 +607,7 @@
     let gamesEl = null;
     let gamesActive = false;
     let gamesTabRef = null;
-    let activeGame = 'minesweeper';
+    let activeGame = 'solitaire';
     const gameInstances = {};
 
     function showGames() {
@@ -697,8 +698,8 @@
         'background:#c0c0c0; border-bottom:2px solid #808080;';
 
       const games = [
-        {id: 'minesweeper', label: 'Minesweeper'},
         {id: 'solitaire', label: 'Solitaire'},
+        {id: 'minesweeper', label: 'Minesweeper'},
         {id: 'tetris', label: 'Tetris'},
       ];
       for (const game of games) {
@@ -720,8 +721,8 @@
       panel.appendChild(content);
 
       // create default game
-      gameInstances.minesweeper = buildMinesweeper();
-      content.appendChild(gameInstances.minesweeper);
+      gameInstances.solitaire = buildSolitaire();
+      content.appendChild(gameInstances.solitaire);
 
       // set initial active state
       requestAnimationFrame(() => switchGame(activeGame));
@@ -1028,7 +1029,7 @@
 
       const statsText = document.createElement('span');
       const clearStatsBtn = document.createElement('button');
-      clearStatsBtn.textContent = 'Reset';
+      clearStatsBtn.textContent = 'Reset Stats';
       clearStatsBtn.title = 'Reset win/loss stats';
       clearStatsBtn.style.cssText = `font-family:inherit; font-size:10px; ` +
         `cursor:pointer; background:${bgColor}; ` +
@@ -1075,7 +1076,7 @@
 
     function buildSolitaire() {
       const suits = ['♠', '♥', '♦', '♣'];
-      const suitColors = ['#1a1a2e', '#c0392b', '#c0392b', '#1a1a2e'];
+      const suitColors = ['#000', '#e00', '#e00', '#000'];
       const valueNames = [
         '', 'A', '2', '3', '4', '5', '6', '7',
         '8', '9', '10', 'J', 'Q', 'K'
@@ -1151,7 +1152,6 @@
         initSolitaire();
       });
       statusBar.appendChild(moveText);
-      statusBar.appendChild(newGameBtn);
       container.appendChild(statusBar);
 
       // stats bar
@@ -1161,8 +1161,10 @@
         'margin-top:2px; font-size:10px; color:#d4edda; ' +
         'opacity:0.8;';
       const solStatsText = document.createElement('span');
+      const solBtnGroup = document.createElement('div');
+      solBtnGroup.style.cssText = 'display:flex; gap:4px;';
       const clearSolStatsBtn = document.createElement('button');
-      clearSolStatsBtn.textContent = 'Reset';
+      clearSolStatsBtn.textContent = 'Reset Stats';
       clearSolStatsBtn.title = 'Reset win/loss stats';
       clearSolStatsBtn.style.cssText = 'font-size:9px; ' +
         'cursor:pointer; background:rgba(255,255,255,0.1); ' +
@@ -1172,8 +1174,15 @@
         saveStats({wins: 0, losses: 0});
         renderStats();
       });
+      // match New Game button style to Reset
+      newGameBtn.style.cssText = 'font-size:9px; ' +
+        'cursor:pointer; background:rgba(255,255,255,0.1); ' +
+        'color:#fff; border:1px solid rgba(255,255,255,0.2); ' +
+        'border-radius:2px; padding:1px 4px;';
+      solBtnGroup.appendChild(newGameBtn);
+      solBtnGroup.appendChild(clearSolStatsBtn);
       solStatsBar.appendChild(solStatsText);
-      solStatsBar.appendChild(clearSolStatsBtn);
+      solStatsBar.appendChild(solBtnGroup);
       container.appendChild(solStatsBar);
 
       function renderStats() {
@@ -1231,7 +1240,14 @@
       function canPlaceOnFoundation(card, fIdx) {
         const pile = foundations[fIdx];
         if (pile.length === 0) {
-          return card.value === 1;
+          // only aces on empty foundations, and check no other
+          // foundation already has this suit
+          if (card.value !== 1) {
+            return false;
+          }
+          return !foundations.some(f =>
+            f.length > 0 && f[0].suit === card.suit
+          );
         }
         const top = pile[pile.length - 1];
         return card.suit === top.suit &&
@@ -1683,15 +1699,28 @@
       side.appendChild(btnRow);
 
       // stats bar
-      const statsEl = document.createElement('div');
-      statsEl.style.cssText = 'font-size:8px; color:#555; ' +
+      const statsRow = document.createElement('div');
+      statsRow.style.cssText = 'display:flex; ' +
+        'justify-content:space-between; align-items:center; ' +
         'margin-top:2px;';
-      side.appendChild(statsEl);
+      const statsEl = document.createElement('div');
+      statsEl.style.cssText = 'font-size:8px; color:#555;';
+      const resetStatsBtn = document.createElement('button');
+      resetStatsBtn.textContent = 'Reset Stats';
+      resetStatsBtn.title = 'Reset high score and stats';
+      resetStatsBtn.style.cssText = 'font-size:7px; ' +
+        'cursor:pointer; background:#333; color:#aaa; ' +
+        'border:1px solid #555; border-radius:2px; padding:1px 3px;';
+      resetStatsBtn.addEventListener('click', () => {
+        saveStats({games: 0, highScore: 0, totalLines: 0});
+        renderStats();
+      });
+      statsRow.appendChild(statsEl);
+      statsRow.appendChild(resetStatsBtn);
+      side.appendChild(statsRow);
 
       function randomPiece() {
-        const key = pieceKeys[
-          Math.floor(Math.random() * pieceKeys.length)
-        ];
+        const key = pieceKeys[Math.floor(Math.random() * pieceKeys.length)];
         const p = pieces[key];
         return {
           shape: p.shape.map(r => [...r]),
