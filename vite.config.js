@@ -7,7 +7,7 @@ const monkeyConfig = {
     name: 'fishtank-userscript',
     description: 'UserScript to tweak/add features to fishtank.live (season 5)',
     namespace: 'http://tampermonkey.net/',
-    version: '5.0.2',
+    version: '5.0.3',
     author: 'barrettotte',
     license: 'MIT',
     match: [

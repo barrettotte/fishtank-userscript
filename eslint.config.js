@@ -14,6 +14,7 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         requestAnimationFrame: 'readonly',
+        fetch: 'readonly',
         localStorage: 'readonly',
         MutationObserver: 'readonly',
         MouseEvent: 'readonly',

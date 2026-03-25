@@ -13,6 +13,7 @@ export function initNew() {
   const altCameras = {
     'Bar Alternate': {parent: 'Bar', xyRatio: 9.19},
     'Dorm Alternate': {parent: 'Dorm', xyRatio: 390},
+    'Job Board': {parent: 'West Wing', xyRatio: 10.29},
     'Market Alternate': {parent: 'Market', xyRatio: 263},
   };
 

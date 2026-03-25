@@ -1,9 +1,10 @@
 // sorted room name list (must match site's displayed names)
 export const roomNames = [
-  'Balcony', 'Bar', 'Bar Alternate', 'Bar PTZ', 'Cameraman', 'Closet',
-  'Confessional', 'Corridor', 'Dining Room', 'Director Mode', 'Dorm',
-  'Dorm Alternate', 'Foyer', 'Glassroom', 'Hallway Down', 'Hallway Up',
-  'Jacuzzi', 'Kitchen', 'Market', 'Market Alternate',
+  'Bar', 'Bar Alternate', 'Bar PTZ', 'Cameraman', 'Closet',
+  'Computer Lab', 'Confessional', 'Corridor', 'Dining Room',
+  'Director Mode', 'Dorm', 'Dorm Alternate', 'East Wing',
+  'Foyer', 'Glassroom', 'Hallway', 'Jacuzzi', 'Job Board', 'Jungle Room',
+  'Kitchen', 'Market', 'Market Alternate', 'West Wing',
 ];
 
 // Returns promise that resolves when element matching selector appears in DOM

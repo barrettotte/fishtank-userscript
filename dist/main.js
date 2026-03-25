@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         fishtank-userscript
 // @namespace    http://tampermonkey.net/
-// @version      5.0.2
+// @version      5.0.3
 // @author       barrettotte
 // @description  UserScript to tweak/add features to fishtank.live (season 5)
 // @license      MIT
@@ -17,26 +17,29 @@
   'use strict';
 
   const roomNames = [
-    "Balcony",
     "Bar",
     "Bar Alternate",
     "Bar PTZ",
     "Cameraman",
     "Closet",
+    "Computer Lab",
     "Confessional",
     "Corridor",
     "Dining Room",
     "Director Mode",
     "Dorm",
     "Dorm Alternate",
+    "East Wing",
     "Foyer",
     "Glassroom",
-    "Hallway Down",
-    "Hallway Up",
+    "Hallway",
     "Jacuzzi",
+    "Job Board",
+    "Jungle Room",
     "Kitchen",
     "Market",
-    "Market Alternate"
+    "Market Alternate",
+    "West Wing"
   ];
   function waitForElement(selector, timeoutMs = 3e4) {
     return new Promise((resolve, reject) => {
@@ -82,6 +85,7 @@
       "Bar PTZ": "brpz-5",
       "Cameraman": "cameraman-5",
       "Closet": "dmcl-5",
+      "Computer Lab": "bbcl-5",
       "Confessional": "cfsl-5",
       "Corridor": "codr-5",
       "Dining Room": "dnrm-5",
@@ -93,6 +97,7 @@
       "Hallway Down": "hwdn-5",
       "Hallway Up": "hwup-5",
       "Jacuzzi": "jckz-5",
+      "Job Board": "jobb-5",
       "Jungle Room": "br4j-5",
       "Kitchen": "ktch-5",
       "Market": "mrke-5",
@@ -1003,6 +1008,7 @@
     const altCameras = {
       "Bar Alternate": { parent: "Bar", xyRatio: 9.19 },
       "Dorm Alternate": { parent: "Dorm", xyRatio: 390 },
+      "Job Board": { parent: "West Wing", xyRatio: 10.29 },
       "Market Alternate": { parent: "Market", xyRatio: 263 }
     };
     const altBtnMarker = "data-userscript-alt";
