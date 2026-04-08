@@ -12,7 +12,7 @@
   "devDependencies": {
     "eslint": "^10.1.0",
     "terser": "^5",
-    "vite": "^7.3.1",
+    "vite": "^7.3.2",
     "vite-plugin-monkey": "^7.1.9"
   }
 }
